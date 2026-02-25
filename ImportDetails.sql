@@ -1,7 +1,7 @@
 --import feed details
 
 --dealer ID here
-declare @dealerid int = 52516
+declare @dealerid int = 
 
 --fgls queries
 
@@ -187,7 +187,7 @@ declare @usedWithPhotos int = @usedInventory - (select count(i.InventoryID)
 	and i.ListingTypeID = 2
 	and ip.InventoryID is null)
 
-select case when @newInventory != 0 then round(@newPhotos / @newWithPhotos, 0) else 0 end as 'avg new photo count'
+select case when @newWithPhotos != 0 then round(@newPhotos / @newWithPhotos, 0) else 0 end as 'avg new photo count'
 
 declare @usedPhotos float = (select count(ip.photourl)
 from DealerSite..inventory i
@@ -196,7 +196,7 @@ where i.dealerid = @dealerid
 and i.ListingTypeID = 2
 and i.InventoryStatusId = 1)
 
-select case when @usedInventory != 0 then round(@usedphotos / @usedWithPhotos, 0) else 0 end as 'avg used photo count'
+select case when @usedWithPhotos = 0 then 0 when @usedInventory != 0 then round(@usedphotos / @usedWithPhotos, 0) else 0 end as 'avg used photo count'
 
 select count(i.vin) as 'new count no photos', case when @newInventory != 0 then round((count(i.vin) / @newInventory) * 100, 0) else 0 end as 'new no photo %'
 from dealersite..inventory i 

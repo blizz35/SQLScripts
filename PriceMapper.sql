@@ -3,9 +3,10 @@ setting up to get the data we need
 */
 
 --enter dealerid and either stock number or VIN of vehicle to check here
-declare @dealerid int = 28965
-declare @input varchar(75) = '5895'
+declare @dealerid int = 
+declare @input varchar(75) = ''
 
+--script start
 declare @stockno varchar(75) = ''
 declare @vin char(17) = ''
 declare @sql varchar(max)
@@ -58,11 +59,11 @@ order by sid.ImportTypeID asc, dc.DataColID
 declare @col1 varchar(6) = 'col' + convert(varchar, (select col from #tempcols where importtypeid = 1 and datacolid = 1))
 declare @col2 varchar(6) = 'col' + convert(varchar, (select col from #tempcols where importtypeid = 1 and datacolid = 19))
 --IMS
-declare @col3 varchar(6) = 'col' + convert(varchar, (select col from #tempcols where importtypeid = 4 and datacolid = 1))
-declare @col4 varchar(6) = 'col' + convert(varchar, (select col from #tempcols where importtypeid = 4 and datacolid = 19))
+declare @col3 varchar(6) = isnull('col' + convert(varchar, (select col from #tempcols where importtypeid = 4 and datacolid = 1)), 'col0')
+declare @col4 varchar(6) = isnull('col' + convert(varchar, (select col from #tempcols where importtypeid = 4 and datacolid = 19)), 'col0')
 --Website
-declare @col5 varchar(6) = 'col' + convert(varchar, (select col from #tempcols where importtypeid = 2 and datacolid = 1))
-declare @col6 varchar(6) = 'col' + convert(varchar, (select col from #tempcols where importtypeid = 2 and datacolid = 19))
+declare @col5 varchar(6) = isnull('col' + convert(varchar, (select col from #tempcols where importtypeid = 2 and datacolid = 1)), 'col0')
+declare @col6 varchar(6) = isnull('col' + convert(varchar, (select col from #tempcols where importtypeid = 2 and datacolid = 19)), 'col0')
 --cleanup
 drop table #tempcols
 
@@ -73,11 +74,11 @@ begin body
 /*
 query for raw data rows matching the supplied information
 */
-set @sql = 'select case when fileversionid = ' + convert(varchar, @dmsfile) + ' then ''dms'' when FileVersionID = ' + convert(varchar, @imsfile) + ' then ''ims'' else ''website'' end as type, * 
+set @sql = 'select case when fileversionid = ' + convert(varchar, @dmsfile) + ' then ''dms'' when FileVersionID = ' + isnull(convert(varchar, @imsfile), '0') + ' then ''ims'' else ''website'' end as type, * 
 from integration..File_Row_Column 
-where FileVersionID in (' + convert(varchar, @dmsfile) + ', ' + convert(varchar, @imsfile) + ', ' + isnull(convert(varchar, @wsfile), '0') + ')
-and ( (' + @col2 + ' like ''%'' + ''' + @stockno + ''' + ''%'' and ' + @col1 + ' = ''' + @vin + ''') or (' + @col4+ ' like ''%'' + ''' + @stockno + ''' + ''%'' and ' + @col3 + ' = ''' + @vin + ''') or (' + isnull(@col6, 'col0') + ' like ''%'' + ''' + @stockno + ''' + ''%'' and ' + isnull(@col5, 'col0') + ' = ''' + @vin + ''') )
-order by case when fileversionid = ' + convert(varchar, @dmsfile) + ' then 1 when FileVersionID = ' + convert(varchar, @imsfile) + ' then 2 else 3 end'  
+where FileVersionID in (' + convert(varchar, @dmsfile) + ', ' + isnull(convert(varchar, @imsfile), '0') + ', ' + isnull(convert(varchar, @wsfile), '0') + ')
+and ( (' + @col2 + ' like ''%'' + ''' + @stockno + ''' + ''%'' and ' + @col1 + ' = ''' + @vin + ''') or (' + @col4 + ' like ''%'' + ''' + @stockno + ''' + ''%'' and ' + @col3 + ' = ''' + @vin + ''') or (' + @col6 + ' like ''%'' + ''' + @stockno + ''' + ''%'' and ' + @col5 + ' = ''' + @vin + ''') )
+order by case when fileversionid = ' + convert(varchar, @dmsfile) + ' then 1 when FileVersionID = ' + isnull(convert(varchar, @imsfile), '0') + ' then 2 else 3 end'  
 
 exec (@sql)
 
