@@ -105,59 +105,78 @@ declare @usedWithPhotos float = @usedTotalCount - (select count(i.InventoryID)
 	and i.ListingTypeID = 2
 	and ip.InventoryID is null)
 declare @usedNoPhotos float = @usedTotalCount - @usedWithPhotos
+drop table if exists #testCheckResults
+create table #testCheckResults (test varchar(100), result varchar(100))
 
 /**
 * NEW INVENTORY
 */
 
 --off hold count more than @range off of website crawling for new
-select 'new inventory count vs website' as 'NEW INVENTORY',
-case when @newTotalCount = 0 then 'no new inventory' when @newActiveCount = 0 then 'fail' else 
-case when (abs(@newActiveCount-count(l.vin))/count(l.vin))*100 between @range and (100 + @range) then 'pass' else 'fail' end end as 'pass/fail'
+insert into #testCheckResults
+values ('new inventory count vs website',
+(select case when @newTotalCount = 0 then 'no new inventory' when @newActiveCount = 0 then 'fail' else 
+case when (abs(@newActiveCount)/count(l.vin))*100 between @range and (100 + @range) then 'pass' else 'fail' end end
 from inventory..Listing l
 where l.dealerid = @dealerID
 and l.ListingStatusID = 1
-and l.ListingTypeID = 1
+and l.ListingTypeID = 1))
+
+--select 'new inventory count vs website' as 'test',
+--case when @newTotalCount = 0 then 'no new inventory' when @newActiveCount = 0 then 'fail' else 
+--case when (abs(@newActiveCount-count(l.vin))/count(l.vin))*100 between @range and (100 + @range) then 'pass' else 'fail' end end as 'result'
+--into #testCheckResults
+--from inventory..Listing l
+--where l.dealerid = @dealerID
+--and l.ListingStatusID = 1
+--and l.ListingTypeID = 1
 
 --more than @range of new missing cost
-select 'new inventory missing cost', 
+insert into #testCheckResults
+values ('new inventory missing cost', 
 case when @newTotalCount = 0 then 'no new inventory' else
-case when (@newNoCost/@newTotalCount)*100 > @range then 'fail' else 'pass' end end as 'pass/fail'
+case when (@newNoCost/@newTotalCount)*100 > @range then 'fail' else 'pass' end end)
 
 --more than @range of new missing MSRP
-select 'new inventory missing MSRP', 
+insert into #testCheckResults
+values ('new inventory missing MSRP', 
 case when @newTotalCount = 0 then 'no new inventory' else 
-case when (@newNoMSRP/@newTotalCount)*100 > @range then 'fail' else 'pass' end end as 'pass/fail'
+case when (@newNoMSRP/@newTotalCount)*100 > @range then 'fail' else 'pass' end end)
 
 --more than @range of new missing invoice
-select 'new inventory missing invoice',
+insert into #testCheckResults
+values ('new inventory missing invoice',
 case when @newTotalCount = 0 then 'no new inventory' else 
-case when (@newNoInvoice/@newTotalCount)*100 > @range then 'fail' else 'pass' end end as 'pass/fail'
+case when (@newNoInvoice/@newTotalCount)*100 > @range then 'fail' else 'pass' end end)
 
 --more than @range of new missing final price
-select 'new inventory missing price',
+insert into #testCheckResults
+values ('new inventory missing price',
 case when @newTotalCount = 0 then 'no new inventory' else 
-case when (@newNoPrice/@newTotalCount)*100 > @range then 'fail' else 'pass' end end as 'pass/fail'
+case when (@newNoPrice/@newTotalCount)*100 > @range then 'fail' else 'pass' end end)
 
 --more than @range of new final price more than @range off of website crawling
-select 'new inventory final price matching website',
-case when @newTotalCount = 0 then 'no new inventory' else
+insert into #testCheckResults
+values ('new inventory final price matching website',
+(select case when @newTotalCount = 0 then 'no new inventory' else
 case when (@newNoPrice / count(l.VIN))*100 > @range then 'fail' else 'pass' end end as 'pass/fail'
 from inventory..listing l
 left join inventory..ListingDetail ld on l.ListingID = ld.ListingID
 where l.DealerID = @dealerid
 and l.ListingStatusID = 1
 and l.ListingTypeID = 1
-and isnull(ld.price, 0.00) != 0.00
+and isnull(ld.price, 0.00) != 0.00))
 
 --average number of photos on new inventory with at least one photo
-select 'new inventory average photo count',
-case when @newTotalCount = 0 then 0 when @newwithphotos = 0 then 0 else round(@newPhotos / @newWithPhotos, 0) end as 'count'
+insert into #testCheckResults
+values ('new inventory average photo count',
+case when @newTotalCount = 0 then 0 when @newwithphotos = 0 then 0 else round(@newPhotos / @newWithPhotos, 0) end)
 
 --more than @range of new inventory missing photos
-select 'new inventory missing photos',
+insert into #testCheckResults
+values ('new inventory missing photos',
 case when @newTotalCount = 0 then 'no new inventory' else
-case when (@newNoPhotos/@newTotalCount) * 100 > @range then 'fail' else 'pass' end end as 'pass/fail'
+case when (@newNoPhotos/@newTotalCount) * 100 > @range then 'fail' else 'pass' end end)
 
 
 /**
@@ -165,43 +184,58 @@ case when (@newNoPhotos/@newTotalCount) * 100 > @range then 'fail' else 'pass' e
 */
 
 --off hold count more than @range off of website crawling for used
-select 'used inventory count vs website' AS 'USED INVENTORY',
-case when @usedTotalCount != 0 then 
+insert into #testCheckResults
+values ('used inventory count vs website',
+(select case when @usedTotalCount != 0 then 
 case when count(VIN) != 0 then
 case when (@usedActiveCount/count(l.vin))*100 between @range and (100 + @range) then 'pass' else 'fail' end
-else 'no used crawling' end end as 'pass/fail'
+else 'no used crawling' end end
 from inventory..listing l
 where l.dealerid = @dealerid
 and l.ListingStatusID = 1
-and l.listingtypeid = 2
+and l.listingtypeid = 2))
 
 --more than @range of used missing cost
-select 'used inventory missing cost', 
+insert into #testCheckResults
+values ('used inventory missing cost', 
 case when @usedTotalCount = 0 then 'no used inventory' else 
-case when (@usedNoCost/@usedTotalCount)*100 > @range then 'fail' else 'pass' end end as 'pass/fail'
+case when (@usedNoCost/@usedTotalCount)*100 > @range then 'fail' else 'pass' end end)
 
 --more than @range of used missing final price
-select 'used inventory missing price', 
+insert into #testCheckResults
+values ('used inventory missing price', 
 case when @usedTotalCount = 0 then 'no used inventory' else 
-case when (@usedNoPrice/@usedTotalCount)*100 > @range then 'fail' else 'pass' end end as 'pass/fail'
+case when (@usedNoPrice/@usedTotalCount)*100 > @range then 'fail' else 'pass' end end)
 
 --more than @range of used final price more than @range off of website crawling
-select 'used inventory final price matching website',
-case when @usedTotalCount = 0 then 'no used inventory' else
+insert into #testCheckResults
+values ('used inventory final price matching website',
+(select case when @usedTotalCount = 0 then 'no used inventory' else
 case when count(l.VIN) = 0 then 'no used crawling' else
-case when (@usedNoPrice / count(l.VIN))*100 > @range then 'fail' else 'pass' end end end as 'pass/fail'
+case when (@usedNoPrice / count(l.VIN))*100 > @range then 'fail' else 'pass' end end end
 from inventory..listing l
 left join inventory..ListingDetail ld on l.ListingID = ld.ListingID
 where l.DealerID = @dealerid
 and l.ListingStatusID = 1
 and l.ListingTypeID = 2
-and isnull(ld.price, 0.00) != 0.00
+and isnull(ld.price, 0.00) != 0.00))
 
 --average number of photos on used inventory with at least one photo
-select 'used inventory average photo count',
-case when @usedTotalCount = 0 then 0 when @usedWithPhotos = 0 then 0 else round(@usedPhotos / @usedWithPhotos, 0) end as 'count'
+insert into #testCheckResults
+values ('used inventory average photo count',
+case when @usedTotalCount = 0 then 0 when @usedWithPhotos = 0 then 0 else round(@usedPhotos / @usedWithPhotos, 0) end)
 
 --more than @range of used inventory missing photos
-select 'used inventory missing photos',
+insert into #testCheckResults
+values ('used inventory missing photos',
 case when @usedTotalCount = 0 then 'no used inventory' else
-case when (@usedNoPhotos / @usedTotalCount) * 100 > @range then 'fail' else 'pass' end end as 'pass/fail'
+case when (@usedNoPhotos / @usedTotalCount) * 100 > @range then 'fail' else 'pass' end end)
+
+
+--output the results to a JSON
+select (select *
+from #testCheckResults
+for json path, root('unit tests')) as 'json'
+
+--cleanup
+drop table #testCheckResults

@@ -3,7 +3,121 @@
 --dealer ID here
 declare @dealerid int = 
 
---fgls queries
+--variable block
+declare @newInventory float = (select count(vin)
+	from DealerSite..inventory
+	where dealerid = @dealerid
+	and ListingTypeID = 1
+	and InventoryStatusId = 1)
+declare @newOffHold float = (select count(vin)
+	from DealerSite..inventory
+	where dealerid = @dealerid
+	and ListingTypeID = 1
+	and DoNotExport = 0
+	and InventoryStatusId = 1)
+declare @usedInventory float = (select count(vin)
+	from DealerSite..inventory
+	where dealerid = @dealerid
+	and ListingTypeID = 2
+	and InventoryStatusId = 1)
+declare @usedOffHold float = (select count(vin)
+	from DealerSite..inventory
+	where dealerid = @dealerid
+	and ListingTypeID = 2
+	and DoNotExport = 0
+	and InventoryStatusId = 1)
+declare @newNoMSRP float = (select count(vin)
+	from DealerSite..inventory
+	where dealerid = @dealerid
+	and ListingTypeID = 1
+	and isnull(priceMSRP, 0.00) = 0.00
+	and InventoryStatusId = 1)
+declare @newNoInvoice float = (select count(vin)
+	from DealerSite..inventory
+	where dealerid = @dealerid
+	and ListingTypeID = 1
+	and isnull(InvoicePrice, 0.00) = 0.00
+	and InventoryStatusId = 1)
+declare @newNoCost float = (select count(vin)
+	from DealerSite..inventory
+	where dealerid = @dealerid
+	and ListingTypeID = 1
+	and isnull(Cost, 0.00) = 0.00
+	and InventoryStatusId = 1)
+declare @newNoLotPrice float = (select count(vin)
+	from DealerSite..inventory
+	where dealerid = @dealerid
+	and ListingTypeID = 1
+	and isnull(LotPrice, 0.00) = 0.00
+	and InventoryStatusId = 1)
+declare @newNoPrice float = (select count(vin)
+	from DealerSite..inventory
+	where dealerid = @dealerid
+	and ListingTypeID = 1
+	and isnull(Price, 0.00) = 0.00
+	and InventoryStatusId = 1)
+declare @usedNoCost float = (select count(vin)
+	from DealerSite..inventory
+	where dealerid = @dealerid
+	and ListingTypeID = 2
+	and isnull(Cost, 0.00) = 0.00
+	and InventoryStatusId = 1)
+declare @usedInvoice float = (select count(vin)
+	from DealerSite..inventory
+	where dealerid = @dealerid
+	and ListingTypeID = 2
+	and isnull(InvoicePrice, 0.00) != 0.00
+	and InventoryStatusId = 1)
+declare @usedNoPrice float = (select count(vin)
+	from DealerSite..inventory
+	where dealerid = @dealerid
+	and ListingTypeID = 2
+	and isnull(Price, 0.00) = 0.00
+	and InventoryStatusId = 1)
+declare @newPhotos float = (select count(ip.photourl)
+	from DealerSite..inventory i
+	left join DealerSite..InventoryPhoto ip on ip.InventoryID = i.InventoryID
+	where i.dealerid = @dealerid
+	and i.ListingTypeID = 1
+	and i.InventoryStatusId = 1)
+declare @newWithPhotos float = @newInventory - (select count(i.InventoryID)
+	from DealerSite..inventory i
+	left join DealerSite..inventoryphoto ip on i.InventoryID = ip.InventoryID and i.dealerid = ip.DealerID
+	where i.dealerid = @dealerid
+	and i.InventoryStatusId = 1
+	and i.ListingTypeID = 1
+	and ip.InventoryID is null)
+declare @newOffWithPhotos float = @newOffHold - (select count(i.InventoryID)
+	from DealerSite..inventory i
+	left join DealerSite..inventoryphoto ip on i.InventoryID = ip.InventoryID and i.dealerid = ip.DealerID
+	where i.dealerid = @dealerid
+	and i.InventoryStatusId = 1
+	and i.ListingTypeID = 1
+	and i.DoNotExport = 0
+	and ip.InventoryID is null)
+declare @usedWithPhotos float = @usedInventory - (select count(i.InventoryID)
+	from DealerSite..inventory i
+	left join DealerSite..inventoryphoto ip on i.InventoryID = ip.InventoryID and i.dealerid = ip.DealerID
+	where i.dealerid = @dealerid
+	and i.InventoryStatusId = 1
+	and i.ListingTypeID = 2
+	and ip.InventoryID is null)
+declare @usedOffWithPhotos float = @usedOffHold - (select count(i.InventoryID)
+	from DealerSite..inventory i
+	left join DealerSite..inventoryphoto ip on i.InventoryID = ip.InventoryID and i.dealerid = ip.DealerID
+	where i.dealerid = @dealerid
+	and i.InventoryStatusId = 1
+	and i.ListingTypeID = 2
+	and i.DoNotExport = 0
+	and ip.InventoryID is null)
+declare @usedPhotos float = (select count(ip.photourl)
+	from DealerSite..inventory i
+	left join DealerSite..InventoryPhoto ip on ip.InventoryID = i.InventoryID
+	where i.dealerid = @dealerid
+	and i.ListingTypeID = 2
+	and i.InventoryStatusId = 1)
+
+--final go live setting queries
 
 --selects settings on all imports configured on that ID
 select si.importname, 
@@ -64,66 +178,11 @@ order by sid.ImportTypeID, d.Description
 --total used
 --total used off hold
 
-declare @newHold float = (select count(vin)
-from DealerSite..inventory
-where dealerid = @dealerid
-and ListingTypeID = 1
-and DoNotExport = 0
-and InventoryStatusId = 1)
-declare @newInventory float = (select count(vin)
-from DealerSite..inventory
-where dealerid = @dealerid
-and ListingTypeID = 1
-and InventoryStatusId = 1)
-declare @usedHold float = (select count(vin)
-from DealerSite..inventory
-where dealerid = @dealerid
-and ListingTypeID = 2
-and DoNotExport = 0
-and InventoryStatusId = 1)
-declare @usedInventory float = (select count(vin)
-from DealerSite..inventory
-where dealerid = @dealerid
-and ListingTypeID = 2
-and InventoryStatusId = 1)
+select @newOffHold as 'new off hold', @newInventory as 'total new', case when @newInventory != 0 then round((@newOffHold / @newInventory) * 100, 0) else 0 end as 'new off hold %', @usedOffHold as 'used off hold', @usedInventory as 'total used', case when @usedInventory != 0 then round((@usedOffHold / @usedInventory) * 100, 0) else 0 end as 'used off hold %' 
 
-select @newHold as 'new off hold', @newInventory as 'total new', case when @newInventory != 0 then round((@newHold / @newInventory) * 100, 0) else 0 end as 'new off hold %'
-select @usedHold as 'used off hold', @usedInventory as 'total used', case when @usedInventory != 0 then round((@usedHold / @usedInventory) * 100, 0) else 0 end as 'used off hold %'
-
---percentage(count(new no msrp)/count(total new))
---percentage(count(new no invoice)/count(total new))
---percentage(count(new no cost)/count(total new))
-
-declare @newNoMSRP float = (select count(vin)
-from DealerSite..inventory
-where dealerid = @dealerid
-and ListingTypeID = 1
-and isnull(priceMSRP, 0.00) = 0.00
-and InventoryStatusId = 1)
-declare @newNoInvoice float = (select count(vin)
-from DealerSite..inventory
-where dealerid = @dealerid
-and ListingTypeID = 1
-and isnull(InvoicePrice, 0.00) = 0.00
-and InventoryStatusId = 1)
-declare @newNoCost float = (select count(vin)
-from DealerSite..inventory
-where dealerid = @dealerid
-and ListingTypeID = 1
-and isnull(Cost, 0.00) = 0.00
-and InventoryStatusId = 1)
-declare @newNoLotPrice float = (select count(vin)
-from DealerSite..inventory
-where dealerid = @dealerid
-and ListingTypeID = 1
-and isnull(LotPrice, 0.00) = 0.00
-and InventoryStatusId = 1)
-declare @newNoPrice float = (select count(vin)
-from DealerSite..inventory
-where dealerid = @dealerid
-and ListingTypeID = 1
-and isnull(Price, 0.00) = 0.00
-and InventoryStatusId = 1)
+--percentage(new no msrp/total new)
+--percentage(new no invoice/total new)
+--percentage(new no cost/total new)
 
 select 
 	case when @newInventory != 0 then round((@newNoMSRP / @newInventory) * 100, 0) else 0 end as 'new no MSRP %',
@@ -132,27 +191,9 @@ select
 	case when @newInventory != 0 then round((@newNoLotPrice / @newInventory) * 100, 0) else 0 end as 'new no lot price %',
 	case when @newInventory != 0 then round((@newNoPrice / @newInventory) * 100, 0) else 0 end as 'new no price %'
 
---percentage(count(used no cost)/count(total used))
---percentage(count(used with invoice)/count(total used)
-
-declare @usedNoCost float = (select count(vin)
-from DealerSite..inventory
-where dealerid = @dealerid
-and ListingTypeID = 2
-and isnull(Cost, 0.00) = 0.00
-and InventoryStatusId = 1)
-declare @usedInvoice float = (select count(vin)
-from DealerSite..inventory
-where dealerid = @dealerid
-and ListingTypeID = 2
-and isnull(InvoicePrice, 0.00) != 0.00
-and InventoryStatusId = 1)
-declare @usedNoPrice float = (select count(vin)
-from DealerSite..inventory
-where dealerid = @dealerid
-and ListingTypeID = 2
-and isnull(Price, 0.00) = 0.00
-and InventoryStatusId = 1)
+--percentage(used with no cost/total used)
+--percentage(used with invoice/total used)
+--percentage(used with no price/total used)
 
 select 
 	case when @usedInventory != 0 then round((@usedNoCost / @usedInventory) * 100, 0) else 0 end as 'used no cost %',
@@ -161,60 +202,15 @@ select
 
 --average photo count for new
 --average photo count for used
---count new with no photos
---count used with no photos
 
-declare @newPhotos float = (select count(ip.photourl)
-from DealerSite..inventory i
-left join DealerSite..InventoryPhoto ip on ip.InventoryID = i.InventoryID
-where i.dealerid = @dealerid
-and i.ListingTypeID = 1
-and i.InventoryStatusId = 1)
+select case when @newWithPhotos != 0 then round(@newPhotos / @newWithPhotos, 0) else 0 end as 'avg new photo count', case when @usedWithPhotos = 0 then 0 when @usedInventory != 0 then round(@usedphotos / @usedWithPhotos, 0) else 0 end as 'avg used photo count' 
 
-declare @newWithPhotos int = @newInventory - (select count(i.InventoryID)
-	from DealerSite..inventory i
-	left join DealerSite..inventoryphoto ip on i.InventoryID = ip.InventoryID and i.dealerid = ip.DealerID
-	where i.dealerid = @dealerid
-	and i.InventoryStatusId = 1
-	and i.ListingTypeID = 1
-	and ip.InventoryID is null)
-declare @newOffWithPhotos int = @newHold - (select count(i.InventoryID)
-	from DealerSite..inventory i
-	left join DealerSite..inventoryphoto ip on i.InventoryID = ip.InventoryID and i.dealerid = ip.DealerID
-	where i.dealerid = @dealerid
-	and i.InventoryStatusId = 1
-	and i.ListingTypeID = 1
-	and i.DoNotExport = 0
-	and ip.InventoryID is null)
+--count total new with no photos
+--count new off hold with no photos
+--percentage total new with no photos
+--percentage new off hold with no photos
 
-declare @usedWithPhotos int = @usedInventory - (select count(i.InventoryID)
-	from DealerSite..inventory i
-	left join DealerSite..inventoryphoto ip on i.InventoryID = ip.InventoryID and i.dealerid = ip.DealerID
-	where i.dealerid = @dealerid
-	and i.InventoryStatusId = 1
-	and i.ListingTypeID = 2
-	and ip.InventoryID is null)
-declare @usedOffWithPhotos int = @usedHold - (select count(i.InventoryID)
-	from DealerSite..inventory i
-	left join DealerSite..inventoryphoto ip on i.InventoryID = ip.InventoryID and i.dealerid = ip.DealerID
-	where i.dealerid = @dealerid
-	and i.InventoryStatusId = 1
-	and i.ListingTypeID = 2
-	and i.DoNotExport = 0
-	and ip.InventoryID is null)
-
-select case when @newWithPhotos != 0 then round(@newPhotos / @newWithPhotos, 0) else 0 end as 'avg new photo count'
-
-declare @usedPhotos float = (select count(ip.photourl)
-from DealerSite..inventory i
-left join DealerSite..InventoryPhoto ip on ip.InventoryID = i.InventoryID
-where i.dealerid = @dealerid
-and i.ListingTypeID = 2
-and i.InventoryStatusId = 1)
-
-select case when @usedWithPhotos = 0 then 0 when @usedInventory != 0 then round(@usedphotos / @usedWithPhotos, 0) else 0 end as 'avg used photo count'
-
-select count(i.vin) as 'new count no photos', (@newHold - @newOffWithPhotos) as 'new off hold no photos', case when @newInventory != 0 then round((count(i.vin) / @newInventory) * 100, 0) else 0 end as 'new no photo %', case when @newHold != 0 then round(((@newhold - @newOffWithPhotos) / @newHold) * 100, 0) else 0 end as 'new off hold no photo %'
+select count(i.vin) as 'new count no photos', (@newOffHold - @newOffWithPhotos) as 'new off hold no photos', case when @newInventory != 0 then round((count(i.vin) / @newInventory) * 100, 0) else 0 end as 'new no photo %', case when @newOffHold != 0 then round(((@newOffHold - @newOffWithPhotos) / @newOffHold) * 100, 0) else 0 end as 'new off hold no photo %'
 from dealersite..inventory i 
 left join DealerSite..inventoryphoto ip on i.InventoryID = ip.InventoryID and i.dealerid = ip.DealerID
 where i.dealerid = @dealerid
@@ -222,7 +218,12 @@ and i.ListingTypeID = 1
 and i.InventoryStatusId = 1
 and ip.InventoryID is null
 
-select count(i.vin) as 'used count no photos', (@usedHold - @usedOffWithPhotos) as 'used off hold no photos', case when @usedInventory != 0 then round((count(i.vin) / @usedInventory) * 100, 0) else 0 end as 'used no photo %', case when @usedHold != 0 then round(((@usedHold - @usedOffWithPhotos) / @usedHold) * 100, 0) else 0 end as 'used off hold no photo %'
+--count total used with no photos
+--count used off hold with no photos
+--percentage total used with no photos
+--percentage used off hold with no photos
+
+select count(i.vin) as 'used count no photos', (@usedOffHold - @usedOffWithPhotos) as 'used off hold no photos', case when @usedInventory != 0 then round((count(i.vin) / @usedInventory) * 100, 0) else 0 end as 'used no photo %', case when @usedOffHold != 0 then round(((@usedOffHold - @usedOffWithPhotos) / @usedOffHold) * 100, 0) else 0 end as 'used off hold no photo %'
 from dealersite..inventory i 
 left join DealerSite..inventoryphoto ip on i.InventoryID = ip.InventoryID and i.dealerid = ip.DealerID
 where i.dealerid = @dealerid
