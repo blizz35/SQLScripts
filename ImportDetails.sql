@@ -178,6 +178,14 @@ declare @newWithPhotos int = @newInventory - (select count(i.InventoryID)
 	and i.InventoryStatusId = 1
 	and i.ListingTypeID = 1
 	and ip.InventoryID is null)
+declare @newOffWithPhotos int = @newHold - (select count(i.InventoryID)
+	from DealerSite..inventory i
+	left join DealerSite..inventoryphoto ip on i.InventoryID = ip.InventoryID and i.dealerid = ip.DealerID
+	where i.dealerid = @dealerid
+	and i.InventoryStatusId = 1
+	and i.ListingTypeID = 1
+	and i.DoNotExport = 0
+	and ip.InventoryID is null)
 
 declare @usedWithPhotos int = @usedInventory - (select count(i.InventoryID)
 	from DealerSite..inventory i
@@ -185,6 +193,14 @@ declare @usedWithPhotos int = @usedInventory - (select count(i.InventoryID)
 	where i.dealerid = @dealerid
 	and i.InventoryStatusId = 1
 	and i.ListingTypeID = 2
+	and ip.InventoryID is null)
+declare @usedOffWithPhotos int = @usedHold - (select count(i.InventoryID)
+	from DealerSite..inventory i
+	left join DealerSite..inventoryphoto ip on i.InventoryID = ip.InventoryID and i.dealerid = ip.DealerID
+	where i.dealerid = @dealerid
+	and i.InventoryStatusId = 1
+	and i.ListingTypeID = 2
+	and i.DoNotExport = 0
 	and ip.InventoryID is null)
 
 select case when @newWithPhotos != 0 then round(@newPhotos / @newWithPhotos, 0) else 0 end as 'avg new photo count'
@@ -198,7 +214,7 @@ and i.InventoryStatusId = 1)
 
 select case when @usedWithPhotos = 0 then 0 when @usedInventory != 0 then round(@usedphotos / @usedWithPhotos, 0) else 0 end as 'avg used photo count'
 
-select count(i.vin) as 'new count no photos', case when @newInventory != 0 then round((count(i.vin) / @newInventory) * 100, 0) else 0 end as 'new no photo %'
+select count(i.vin) as 'new count no photos', (@newHold - @newOffWithPhotos) as 'new off hold no photos', case when @newInventory != 0 then round((count(i.vin) / @newInventory) * 100, 0) else 0 end as 'new no photo %', case when @newHold != 0 then round(((@newhold - @newOffWithPhotos) / @newHold) * 100, 0) else 0 end as 'new off hold no photo %'
 from dealersite..inventory i 
 left join DealerSite..inventoryphoto ip on i.InventoryID = ip.InventoryID and i.dealerid = ip.DealerID
 where i.dealerid = @dealerid
@@ -206,7 +222,7 @@ and i.ListingTypeID = 1
 and i.InventoryStatusId = 1
 and ip.InventoryID is null
 
-select count(i.vin) as 'used count no photos', case when @usedInventory != 0 then round((count(i.vin) / @usedInventory) * 100, 0) else 0 end as 'used no photo %'
+select count(i.vin) as 'used count no photos', (@usedHold - @usedOffWithPhotos) as 'used off hold no photos', case when @usedInventory != 0 then round((count(i.vin) / @usedInventory) * 100, 0) else 0 end as 'used no photo %', case when @usedHold != 0 then round(((@usedHold - @usedOffWithPhotos) / @usedHold) * 100, 0) else 0 end as 'used off hold no photo %'
 from dealersite..inventory i 
 left join DealerSite..inventoryphoto ip on i.InventoryID = ip.InventoryID and i.dealerid = ip.DealerID
 where i.dealerid = @dealerid
