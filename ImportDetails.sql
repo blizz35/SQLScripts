@@ -4,6 +4,26 @@
 declare @dealerid int = 
 
 --variable block
+declare @newDupes int = (select count(foo.count)
+	from (select count(i.vin) as count
+	from dealersite..inventory i
+	left join DealerSite..inventory i2 on i.vin = i2.vin
+	where i2.dealerid = @dealerid
+	and i2.InventoryStatusId = 1
+	and i.InventoryStatusId = 1
+	and i2.ListingTypeID = 1
+	group by i.vin
+	having count(i.vin) > 1) foo)
+declare @usedDupes int = (select count(foo.count)
+	from (select count(i.vin) as count
+	from dealersite..inventory i
+	left join DealerSite..inventory i2 on i.vin = i2.vin
+	where i2.dealerid = @dealerid
+	and i2.InventoryStatusId = 1
+	and i.InventoryStatusId = 1
+	and i2.ListingTypeID = 2
+	group by i.vin
+	having count(i.vin) > 1) foo)
 declare @newInventory float = (select count(vin)
 	from DealerSite..inventory
 	where dealerid = @dealerid
@@ -25,6 +45,12 @@ declare @usedOffHold float = (select count(vin)
 	where dealerid = @dealerid
 	and ListingTypeID = 2
 	and DoNotExport = 0
+	and InventoryStatusId = 1)
+declare @usedCertified float = (select count(vin)
+	from DealerSite..inventory
+	where dealerid = @dealerid
+	and ListingTypeID = 2
+	and CertifiedInd = 1
 	and InventoryStatusId = 1)
 declare @newNoMSRP float = (select count(vin)
 	from DealerSite..inventory
@@ -74,6 +100,40 @@ declare @usedNoPrice float = (select count(vin)
 	and ListingTypeID = 2
 	and isnull(Price, 0.00) = 0.00
 	and InventoryStatusId = 1)
+declare @newOldestInventory int = (select top 1 datediff(day, InventoryDate, getDate())
+	from DealerSite..inventory
+	where dealerid = @dealerid
+	and InventoryStatusId = 1
+	and ListingTypeID = 1
+	order by InventoryDate)
+declare @newNewestInventory int = (select top 1 datediff(day, InventoryDate, getDate())
+	from DealerSite..inventory
+	where dealerid = @dealerid
+	and InventoryStatusId = 1
+	and ListingTypeID = 1
+	order by InventoryDate desc)
+declare @usedOldestInventory int = (select top 1 datediff(day, InventoryDate, getDate())
+	from DealerSite..inventory
+	where dealerid = @dealerid
+	and InventoryStatusId = 1
+	and ListingTypeID = 2
+	order by InventoryDate)
+declare @usedNewestInventory int = (select top 1 datediff(day, InventoryDate, getDate())
+	from DealerSite..inventory
+	where dealerid = @dealerid
+	and InventoryStatusId = 1
+	and ListingTypeID = 2
+	order by InventoryDate desc)
+declare @newAverageAge float = (select avg(datediff(day, InventoryDate, getDate()))
+	from DealerSite..inventory
+	where dealerid = @dealerid
+	and InventoryStatusId = 1
+	and ListingTypeID = 1) 
+declare @usedAverageAge float = (select avg(datediff(day, InventoryDate, getDate()))
+	from DealerSite..inventory
+	where dealerid = @dealerid
+	and InventoryStatusId = 1
+	and ListingTypeID = 2) 
 declare @newPhotos float = (select count(ip.photourl)
 	from DealerSite..inventory i
 	left join DealerSite..InventoryPhoto ip on ip.InventoryID = i.InventoryID
@@ -178,7 +238,15 @@ order by sid.ImportTypeID, d.Description
 --total used
 --total used off hold
 
-select @newOffHold as 'new off hold', @newInventory as 'total new', case when @newInventory != 0 then round((@newOffHold / @newInventory) * 100, 0) else 0 end as 'new off hold %', @usedOffHold as 'used off hold', @usedInventory as 'total used', case when @usedInventory != 0 then round((@usedOffHold / @usedInventory) * 100, 0) else 0 end as 'used off hold %' 
+select @newOffHold as 'new off hold', @newInventory as 'total new', 
+case when @newInventory != 0 then round((@newOffHold / @newInventory) * 100, 0) else 0 end as 'new off hold %', 
+@usedOffHold as 'used off hold', 
+@usedInventory as 'total used', 
+case when @usedInventory != 0 then round((@usedOffHold / @usedInventory) * 100, 0) else 0 end as 'used off hold %', 
+@usedCertified as 'certified',
+case when @usedInventory != 0 then round((@usedCertified / @usedInventory) * 100, 0) else 0 end as 'used certified %',
+@newDupes as 'duplicate active new',
+@usedDupes as 'duplicate active used'
 
 --percentage(new no msrp/total new)
 --percentage(new no invoice/total new)
@@ -199,6 +267,18 @@ select
 	case when @usedInventory != 0 then round((@usedNoCost / @usedInventory) * 100, 0) else 0 end as 'used no cost %',
 	case when @usedInventory != 0 then round((@usedInvoice / @usedInventory) * 100, 0) else 0 end as 'used with invoice %',
 	case when @usedInventory != 0 then round((@usedNoPrice / @usedInventory) * 100, 0) else 0 end as 'used no price %'
+
+--oldest new inventory age
+--newest new inventory age
+--average new inventory age
+
+select @newOldestInventory as 'oldest new vehicle age', @newNewestInventory as 'newest new vehicle age', @newAverageAge as 'average age of new'
+
+--oldest used inventory age
+--newest used inventory age
+--average used inventory age
+
+select @usedOldestInventory as 'oldest used vehicle age', @usedNewestInventory as 'newest used vehicle age', @usedAverageAge as 'average age of used'
 
 --average photo count for new
 --average photo count for used
