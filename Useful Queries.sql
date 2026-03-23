@@ -4,8 +4,8 @@ select left(right(fi.filename, len(fi.filename) - 1), charindex('\', fi.FileName
 from integration..Import_History ih
 left join Integration..file_version fv on ih.FileVersionID = fv.FileVersionID
 left join Integration..File_Info fi on fv.fileid = fi.FileID
-where ih.dealerid = 52752  --dealerid here
---and ih.ImportProcessorID = (select ImportProcessorID from Integration..Source_Import where ImportName = 'homenet') --import name here
+where ih.dealerid = 218228  --dealerid here
+--and ih.ImportProcessorID = (select ImportProcessorID from Integration..Source_Import where ImportName = 'cdk') --import name here
 and ih.HistoryDate > dateadd(day, -7, getdate())
 order by ih.HistoryDate desc
 
@@ -27,7 +27,8 @@ select
 		when ih.HistoryUserID = -4 then 'Front/back Gross'
 		when ih.HistoryUserID = -5 then 'DMS Writeback'
 		else l2.First_Name + ' ' + l2.Last_Name end as Name2,
-	ih.price,
+	case when ih.WholesaleInd = 1 then 'wholesale' else 'retail' end,
+	case when ih.DoNotExport = 1 then 'on hold' else 'off hold' end,
 	ih.*
 from 
 	dealersite..inventory i
@@ -42,9 +43,9 @@ left join
 left join
 	admin..dealer d
 		on d.dealerid = i.dealerid
---where i.vin = '1FTFW1EVXAFD75220' --VIN here
-where i.stockno = 'U140463A' and i.dealerid = 52752 --stocknumber and dealerid here
---where i.inventoryid = 379637231
+where i.vin = 'KMUMEDTC5TU273977' --VIN here
+--where i.stockno = '132401A' and i.dealerid = 14538 --stocknumber and dealerid here
+--where i.inventoryid = 386552291
 order by ih.historydate desc
 
 --pulls up current information on a vehicle
@@ -52,15 +53,15 @@ select *
 from DealerSite..inventory
 where inventoryid = 385479781
 
-select ComparePrice, *
+select *
 from DealerSite..Inventory
-where stockno = '3P5597'
---and dealerid = 44485
+where stockno = 'PTS310299'
+and dealerid = 54116
 and InventoryStatusId = 1
 
 select ComparePrice, *
 from DealerSite..Inventory
-where vin in ('SC6GM1CA8SF026344')
+where vin in ('3FTTW8A39SRB76440')
 and InventoryStatusId = 1
 
 --pulls up counts of active new and used grouped by make and hold status
@@ -70,7 +71,7 @@ select
 	case when donotexport = 0 then 'Off Hold' else 'On Hold' end,
 	count(vin)
 from DealerSite..inventory
-where dealerid = 5455 --dealerID here
+where dealerid = 189902 --dealerID here
 and InventoryStatusId = 1
 group by listingtypeid, Make, donotexport
 order by listingtypeid, make, donotexport
@@ -81,7 +82,7 @@ order by listingtypeid, make, donotexport
 		case when donotexport = 0 then 'Off Hold' else 'On Hold' end,
 		count(vin)
 	from dealersite..inventory
-	where dealerid = 213823 --dealerID here  	 
+	where dealerid = 31993 --dealerID here  	 
 	and inventorystatusid = 1
 	group by listingtypeid, donotexport
 	order by listingtypeid, donotexport
@@ -99,7 +100,7 @@ left join admin..Account_Dealer ad on d.DealerID = ad.DealerID
 left join admin..account a on a.AccountID = ad.AccountID
 where inventorystatusid = 1
 and d.ClientInd = 1
-and a.name like '%moore%'
+and a.name like '%dogwood%'
 --and d.city = 'hurlock'
 group by d.dealerid, d.dealername, listingtypeid, donotexport
 order by d.dealerid, d.dealername, listingtypeid, donotexport
@@ -113,8 +114,8 @@ and inventorystatusid = 1
 --onboarding price mapping check
 select stockno, cost, invoiceprice, pricemsrp, lotprice, price, VIN, ListingTypeID
 from DealerSite..Inventory
-where dealerid = 59095 
-and stockno in ('73333', 'TR26049', 'TR26068')
+where dealerid = 56206 
+and stockno in ('B215940', 'B370612', 'K25776C', 'K26193B')
 and InventoryStatusId = 1
 order by ListingTypeID, stockno
 
@@ -122,7 +123,7 @@ order by ListingTypeID, stockno
 --requires inventoryid
 select *
 from DealerSite..InventoryPhoto
-where inventoryid = 385976731
+where inventoryid = 381939151
 order by SortOrder
 
 --pulls up all photos for a piece of inventory
@@ -130,7 +131,7 @@ order by SortOrder
 select ip.*
 from DealerSite..inventory i
 left join DealerSite..inventoryphoto ip on i.inventoryid = ip.InventoryID
-where i.vin = '5TDKDRAHXPS018907' 
+where i.vin = '7YAKN4DA3TY059417' 
 and i.InventoryStatusId = 1
 order by ip.SortOrder
 
@@ -139,7 +140,7 @@ order by ip.SortOrder
 select ip.*
 from DealerSite..inventory i
 left join DealerSite..inventoryphoto ip on i.inventoryid = ip.InventoryID
-where i.StockNo in ('PS568889A') and i.dealerid = 218059
+where i.StockNo in ('PS568889A') and i.dealerid = 44678
 order by inventoryid, SortOrder
 
 --pulls up vins and the count of photos on each vin for a dealer
@@ -245,13 +246,14 @@ and d.ClientInd = 1
 
 --searches for dealers by the group name
 --can also filter that list by OEM
-select d.dealerid, d.dealername, d.Address, d.city, d.state, a.name
+select d.dealerid, d.dealername, d.Address, d.city, d.state, a.name, isnull(string_agg(convert(nvarchar(max), m.makename), ', ') within group (order by m.makename asc), 'No Make Selected') as franchises
 from admin..account a
 left join admin..Account_Dealer ad on a.AccountID = ad.AccountID
 left join admin..Dealer d on d.dealerid = ad.DealerID
---left join admin..DealerMake dm on d.dealerid = dm.DealerID
---left join inventory..make m on m.MakeID = dm.MakeID
-where a.Name like '%dahl%'
+left join admin..DealerMake dm on d.dealerid = dm.DealerID
+left join inventory..make m on m.MakeID = dm.MakeID
+where a.Name like '%bob johnson%'
 and d.ClientInd = 1
 --and m.MakeName = 'honda'
+group by d.dealerid, d.dealername, d.Address, d.city, d.state, a.name
 order by d.city

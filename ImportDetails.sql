@@ -24,6 +24,15 @@ declare @usedDupes int = (select count(foo.count)
 	and i2.ListingTypeID = 2
 	group by i.vin
 	having count(i.vin) > 1) foo)
+declare @newNoOEM int = (select count(i.vin)
+	from admin..dealer d
+	left join admin..DealerMake dm on dm.DealerID = d.DealerID
+	left join inventory..make m on m.MakeID = dm.MakeID
+	left join DealerSite..inventory i on i.DealerID = d.DealerID
+	where d.dealerid = @dealerid
+	and i.InventoryStatusId = 1
+	and i.ListingTypeID = 1
+	and i.make != m.MakeName)
 declare @newInventory float = (select count(vin)
 	from DealerSite..inventory
 	where dealerid = @dealerid
@@ -246,7 +255,8 @@ case when @usedInventory != 0 then round((@usedOffHold / @usedInventory) * 100, 
 @usedCertified as 'certified',
 case when @usedInventory != 0 then round((@usedCertified / @usedInventory) * 100, 0) else 0 end as 'used certified %',
 @newDupes as 'duplicate active new',
-@usedDupes as 'duplicate active used'
+@usedDupes as 'duplicate active used',
+@newNoOEM as 'new inventory not under selected OEM'
 
 --percentage(new no msrp/total new)
 --percentage(new no invoice/total new)
