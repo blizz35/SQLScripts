@@ -1,5 +1,5 @@
 --dealer ID here
-declare @dealerid int = 
+declare @dealerid int = 50367
 
 
 --selects settings on all imports configured on that ID

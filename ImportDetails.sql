@@ -1,7 +1,7 @@
 --import feed details
 
 --dealer ID here
-declare @dealerid int = 
+declare @dealerid int = 212159
 
 --variable block
 declare @newDupes int = (select count(foo.count)
@@ -24,7 +24,8 @@ declare @usedDupes int = (select count(foo.count)
 	and i2.ListingTypeID = 2
 	group by i.vin
 	having count(i.vin) > 1) foo)
-declare @newNoOEM int = (select count(i.vin)
+declare @newNoOEM int = (select count(foo.count)
+	from (select count(i.vin) as count
 	from admin..dealer d
 	left join admin..DealerMake dm on dm.DealerID = d.DealerID
 	left join inventory..make m on m.MakeID = dm.MakeID
@@ -32,7 +33,9 @@ declare @newNoOEM int = (select count(i.vin)
 	where d.dealerid = @dealerid
 	and i.InventoryStatusId = 1
 	and i.ListingTypeID = 1
-	and i.make != m.MakeName)
+	group by i.make
+	having isnull(string_agg(convert(nvarchar(max), m.makename), ', ') within group (order by m.makename asc), 'No Make Selected') not like '%' + i.make + '%'
+	) foo )
 declare @newInventory float = (select count(vin)
 	from DealerSite..inventory
 	where dealerid = @dealerid
@@ -216,15 +219,10 @@ left join Integration..ImportSourceDealerColumns i on i.ImportDealerID = sid.Imp
 where sid.DealerID = @dealerid
 order by sid.ImportTypeID
 
---selects the fields that are mapped and marked updatable from the fields we would typically need to update during a go live
+--selects the fields that are mapped and updatable with a filter on them as well as the contents of that filter
 select si.ImportName, 
 	d.Description, 
 	id.col, 
-	case when sidm.MappingTypeID = 1 then 'Transform' 
-		when sidm.MappingTypeID = 2 then 'Filter' 
-		when sidm.MappingTypeID = 3 then 'Validate' 
-		when sidm.mappingtypeid = 4 then 'Conditional Update' 
-		else '~~ no mapping set ~~' end as 'Mapping Type', 
 	case when sidm.SQL = 'd.listingtypeid = 1' then '~~ updating new only ~~' 
 		when sidm.sql = 'd.listingtypeid = 2' then '~~ updating used only ~~' 
 		when sidm.sql is null then '~~ no mapping set ~~' 
@@ -236,7 +234,7 @@ left join Integration..Source_Import_Dealer sid on sid.DealerID = id.DealerID an
 left join Integration..ImportSourceDealerColumns i on i.ImportDealerID = sid.ImportDealerID and i.DataColID = d.DataColID
 left join integration..source_import_dealer_mapping sidm on sid.dealerid = sidm.DealerID and sid.ImportProcessorID = sidm.ImportProcessorID and sidm.DataColID = id.DataColID
 where id.DealerID = @dealerid
-and d.Description in ('wholesaleind', 'certifiedind', 'description', 'photourl', 'pricemsrp', 'price', 'lotprice', 'cost', 'invoiceprice', 'donotexport')
+and sidm.MappingTypeID = 2
 and i.Updateable = 1
 order by sid.ImportTypeID, d.Description
 
@@ -256,7 +254,7 @@ case when @usedInventory != 0 then round((@usedOffHold / @usedInventory) * 100, 
 case when @usedInventory != 0 then round((@usedCertified / @usedInventory) * 100, 0) else 0 end as 'used certified %',
 @newDupes as 'duplicate active new',
 @usedDupes as 'duplicate active used',
-@newNoOEM as 'new inventory not under selected OEM'
+isnull(@newNoOEM, 0) as 'new inventory not under selected OEM'
 
 --percentage(new no msrp/total new)
 --percentage(new no invoice/total new)

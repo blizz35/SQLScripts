@@ -3,8 +3,8 @@ setting up to get the data we need
 */
 
 --enter dealerid and either stock number or VIN of vehicle to check here
-declare @dealerid int = 
-declare @input varchar(75) = ''
+declare @dealerid int = 117042
+declare @input varchar(75) = '684170'
 
 --script start
 declare @stockno varchar(75) = ''
