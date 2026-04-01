@@ -1,7 +1,7 @@
---import feed details
+--import feed details v1.0
 
 --dealer ID here
-declare @dealerid int = 212159
+declare @dealerid int = 
 
 --variable block
 declare @newDupes int = (select count(foo.count)
@@ -47,6 +47,11 @@ declare @newOffHold float = (select count(vin)
 	and ListingTypeID = 1
 	and DoNotExport = 0
 	and InventoryStatusId = 1)
+declare @newOnline float = (select count(vin)
+	from inventory..listing
+	where dealerid = @dealerid
+	and ListingTypeID = 1
+	and ListingStatusID = 1)
 declare @usedInventory float = (select count(vin)
 	from DealerSite..inventory
 	where dealerid = @dealerid
@@ -58,6 +63,11 @@ declare @usedOffHold float = (select count(vin)
 	and ListingTypeID = 2
 	and DoNotExport = 0
 	and InventoryStatusId = 1)
+declare @usedOnline float = (select count(vin)
+	from inventory..listing
+	where dealerid = @dealerid
+	and ListingTypeID = 2
+	and ListingStatusID = 1)
 declare @usedCertified float = (select count(vin)
 	from DealerSite..inventory
 	where dealerid = @dealerid
@@ -239,22 +249,32 @@ and i.Updateable = 1
 order by sid.ImportTypeID, d.Description
 
 --percentage(new off hold / total new)
---percentage(used off hold / total used)
 --total new 
 --total new off hold
---total used
---total used off hold
+--duplicate active VINs under another dealerID
+--active new where the OEM doesn't match the account
 
 select @newOffHold as 'new off hold', @newInventory as 'total new', 
 case when @newInventory != 0 then round((@newOffHold / @newInventory) * 100, 0) else 0 end as 'new off hold %', 
-@usedOffHold as 'used off hold', 
-@usedInventory as 'total used', 
+@newDupes as 'duplicate active new',
+@usedDupes as 'duplicate active used',
+isnull(@newNoOEM, 0) as 'new inventory not under selected OEM',
+@newOnline as 'new inventory crawled online',
+case when @newInventory != 0 then round((@newOffHold / @newOnline) * 100, 0) else 0 end as 'new off hold vs website %'
+
+--total used
+--total used off hold
+--percentage used off hold
+--certified count
+--certified percentage
+
+select @usedOffHold as 'used off hold', 
+@usedInventory as 'total used',
 case when @usedInventory != 0 then round((@usedOffHold / @usedInventory) * 100, 0) else 0 end as 'used off hold %', 
 @usedCertified as 'certified',
 case when @usedInventory != 0 then round((@usedCertified / @usedInventory) * 100, 0) else 0 end as 'used certified %',
-@newDupes as 'duplicate active new',
-@usedDupes as 'duplicate active used',
-isnull(@newNoOEM, 0) as 'new inventory not under selected OEM'
+@usedOnline as 'used inventory crawled online',
+case when @usedInventory != 0 then round((@usedOffHold / @usedOnline) * 100, 0) else 0 end as 'used off hold vs website %'
 
 --percentage(new no msrp/total new)
 --percentage(new no invoice/total new)
