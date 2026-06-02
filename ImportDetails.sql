@@ -1,7 +1,9 @@
---import feed details v1.0
+/**
+* import feed details v1.0.2
+*/
 
 --dealer ID here
-declare @dealerid int = 
+declare @dealerid int = 873
 
 --variable block
 declare @newDupes int = (select count(foo.count)
@@ -245,7 +247,6 @@ left join Integration..ImportSourceDealerColumns i on i.ImportDealerID = sid.Imp
 left join integration..source_import_dealer_mapping sidm on sid.dealerid = sidm.DealerID and sid.ImportProcessorID = sidm.ImportProcessorID and sidm.DataColID = id.DataColID
 where id.DealerID = @dealerid
 and sidm.MappingTypeID = 2
-and i.Updateable = 1
 order by sid.ImportTypeID, d.Description
 
 --percentage(new off hold / total new)
@@ -260,7 +261,7 @@ case when @newInventory != 0 then round((@newOffHold / @newInventory) * 100, 0) 
 @usedDupes as 'duplicate active used',
 isnull(@newNoOEM, 0) as 'new inventory not under selected OEM',
 @newOnline as 'new inventory crawled online',
-case when @newInventory != 0 then round((@newOffHold / @newOnline) * 100, 0) else 0 end as 'new off hold vs website %'
+case when @newInventory != 0 and @newOnline != 0 then round((@newOffHold / @newOnline) * 100, 0) else 0 end as 'new off hold vs website %'
 
 --total used
 --total used off hold
@@ -274,7 +275,7 @@ case when @usedInventory != 0 then round((@usedOffHold / @usedInventory) * 100, 
 @usedCertified as 'certified',
 case when @usedInventory != 0 then round((@usedCertified / @usedInventory) * 100, 0) else 0 end as 'used certified %',
 @usedOnline as 'used inventory crawled online',
-case when @usedInventory != 0 then round((@usedOffHold / @usedOnline) * 100, 0) else 0 end as 'used off hold vs website %'
+case when @usedInventory != 0 and @usedOnline != 0 then round((@usedOffHold / @usedOnline) * 100, 0) else 0 end as 'used off hold vs website %'
 
 --percentage(new no msrp/total new)
 --percentage(new no invoice/total new)

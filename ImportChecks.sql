@@ -1,4 +1,7 @@
 /**
+* 
+* Version 1.0
+* 
 * this is a set of unit tests to run after setting up the first round of imports for a dealership
 * the tests check to see if the inventory has cost/invoice/MSRP, if the total count off hold matches the website, and if final price is close to the website
 * if there is no new or used inventory, each test will say
@@ -106,7 +109,7 @@ declare @usedWithPhotos float = @usedTotalCount - (select count(i.InventoryID)
 	and ip.InventoryID is null)
 declare @usedNoPhotos float = @usedTotalCount - @usedWithPhotos
 drop table if exists #testCheckResults
-create table #testCheckResults (test varchar(100), result varchar(100))
+create table #testCheckResults (name varchar(100), result varchar(100))
 
 /**
 * NEW INVENTORY
@@ -231,11 +234,10 @@ values ('used inventory missing photos',
 case when @usedTotalCount = 0 then 'no used inventory' else
 case when (@usedNoPhotos / @usedTotalCount) * 100 > @range then 'fail' else 'pass' end end)
 
-
 --output the results to a JSON
-select (select *
+select name, result
 from #testCheckResults
-for json path, root('unit tests')) as 'json'
+for json path--, root('unit tests')) as 'json'
 
 --cleanup
 drop table #testCheckResults
